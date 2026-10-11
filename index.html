@@ -95,9 +95,12 @@ document.querySelectorAll(".pick button").forEach(b=>b.onclick=()=>found(b.datas
 $("#man").onclick=picker;
 navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false}).then(s=>{$("#vid").srcObject=s}).catch(()=>{$("#nocam").style.display="block";$("#vid").style.display="none"});
 const MODEL="https://teachablemachine.withgoogle.com/models/foa0pjNwP/";let tm;
-$("#go").onclick=async()=>{const v=$("#vid");if(!v.videoWidth)return picker();toast("Identifying…");
-try{tm=tm||await window.tmImage.load(MODEL+"model.json",MODEL+"metadata.json");const L=(await tm.predict(v)).sort((x,y)=>y.probability-x.probability),p=L[0];
-if(p.className!="none"&&p.probability>=.6&&T.find(t=>t.id==p.className))found(p.className);else toast("Not sure. Best guesses: "+L.slice(0,2).map(x=>x.className+" "+Math.round(x.probability*100)+"%").join(", "))}
-catch(e){toast("Identifier offline. Pick the class instead.");picker()}};
+async function ai(v){const c=document.createElement("canvas"),k=800/Math.max(v.videoWidth,v.videoHeight);c.width=v.videoWidth*k;c.height=v.videoHeight*k;c.getContext("2d").drawImage(v,0,0,c.width,c.height);
+const r=await fetch("/api/identify",{method:"POST",body:JSON.stringify({image:c.toDataURL("image/jpeg",.8).split(",")[1]})});if(!r.ok)throw 0;return(await r.json()).id}
+async function local(v){tm=tm||await window.tmImage.load(MODEL+"model.json",MODEL+"metadata.json");return(await tm.predict(v)).sort((x,y)=>y.probability-x.probability)}
+$("#go").onclick=async()=>{const v=$("#vid");if(!v.videoWidth)return picker();toast("Identifying…");let id=null;try{id=await ai(v)}catch(e){}
+if(id&&T.find(t=>t.id==id))return found(id);
+try{const L=await local(v),p=L[0];if(p.className!="none"&&p.probability>=.6&&T.find(t=>t.id==p.className))return found(p.className);
+toast("Not sure. Best guesses: "+L.slice(0,2).map(x=>x.className+" "+Math.round(x.probability*100)+"%").join(", "))}catch(e){toast("Identifier offline. Pick the class instead.");picker()}};
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
 </script></body></html>
