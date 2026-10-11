@@ -59,6 +59,8 @@ nav button{flex:1;background:none;border:0;color:#8fa6cf;font:600 17px "Barlow C
 </main>
 <nav><button class="on" data-v="scan">Scan</button><button data-v="dex">TrainDex</button><button data-v="me">Profile</button></nav>
 <div id="card"><div class="sheet" id="sheet"></div></div><div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
 <script>
 const T=[
 {id:"380",n:"Class 380",m:"Siemens Desiro",y:"2010",t:"Electric unit",s:"100 mph",r:"common",h:"Introduced around 2010 for Ayrshire and Inverclyde routes out of Glasgow Central, replacing older suburban trains."},
@@ -92,8 +94,10 @@ function picker(){$("#sheet").innerHTML=`<h2>Which train is it?</h2><div class="
 document.querySelectorAll(".pick button").forEach(b=>b.onclick=()=>found(b.dataset.id));$("#cx").onclick=()=>$("#card").classList.remove("on")}
 $("#man").onclick=picker;
 navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false}).then(s=>{$("#vid").srcObject=s}).catch(()=>{$("#nocam").style.display="block";$("#vid").style.display="none"});
-$("#go").onclick=async()=>{const v=$("#vid");if(!v.videoWidth)return picker();const c=document.createElement("canvas"),k=800/Math.max(v.videoWidth,v.videoHeight);c.width=v.videoWidth*k;c.height=v.videoHeight*k;c.getContext("2d").drawImage(v,0,0,c.width,c.height);
-toast("Identifying…");try{const r=await fetch("/api/identify",{method:"POST",body:JSON.stringify({image:c.toDataURL("image/jpeg",.8).split(",")[1]})});if(!r.ok)throw 0;const d=await r.json();
-if(d.id&&T.find(t=>t.id==d.id))found(d.id);else toast("No ScotRail train found. Try again, or pick the class.")}catch(e){toast("Identifier offline. Pick the class instead.");picker()}};
+const MODEL="https://teachablemachine.withgoogle.com/models/foa0pjNwP/";let tm;
+$("#go").onclick=async()=>{const v=$("#vid");if(!v.videoWidth)return picker();toast("Identifying…");
+try{tm=tm||await window.tmImage.load(MODEL+"model.json",MODEL+"metadata.json");const p=(await tm.predict(v)).sort((x,y)=>y.probability-x.probability)[0];
+if(p.className!="none"&&p.probability>=.75&&T.find(t=>t.id==p.className))found(p.className);else toast("Not sure. Try a clearer shot, or pick the class.")}
+catch(e){toast("Identifier offline. Pick the class instead.");picker()}};
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
 </script></body></html>
