@@ -1,13 +1,13 @@
 const IDS=["380","385","170","158","334","320","318","314","43","156","153"];
 const MODEL=process.env.CF_MODEL||"@cf/meta/llama-3.2-11b-vision-instruct";
-const URL="https://api.cloudflare.com/client/v4/accounts/"+process.env.CLOUDFLARE_ACCOUNT_ID+"/ai/v1/chat/completions";
+const URL="https://api.cloudflare.com/client/v4/accounts/"+process.env.CLOUDFLARE_ACCOUNT_ID+"/ai/run/"+MODEL;
 const PROMPT="Look at this train photo. 1) If a vehicle or unit number is readable on the front or side (for example 153377 or 385012), copy the digits exactly. The first three digits are the British Rail class (HST power cars start with 43). 2) Otherwise judge the class from its shape and livery. Only answer if it is a ScotRail-liveried train. The possible classes are: "+IDS.join(", ")+". Reply with JSON only, like {\"number\":\"153377\",\"id\":\"153\"}. Use null for number if none is readable, and null for id if it is not a ScotRail train or you are unsure.";
 const call=async(content)=>{
   const r=await fetch(URL,{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+process.env.CLOUDFLARE_API_TOKEN},
-   body:JSON.stringify({model:MODEL,max_tokens:300,messages:[{role:"user",content}]})});
+   body:JSON.stringify({max_tokens:300,messages:[{role:"user",content}]})});
   return r.json();
 };
-const text=(d)=>d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||(d.result&&d.result.response)||d.response||"";
+const text=(d)=>{const c=d.choices||(d.result&&d.result.choices);return c&&c[0]&&c[0].message&&c[0].message.content||(d.result&&d.result.response)||d.response||""};
 const err=(d)=>JSON.stringify(d.errors||d.error||d).slice(0,160);
 const ask=async(image)=>{
   const img=[{type:"text",text:PROMPT},{type:"image_url",image_url:{url:"data:image/jpeg;base64,"+image}}];
