@@ -96,8 +96,8 @@ $("#man").onclick=picker;
 navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false}).then(s=>{$("#vid").srcObject=s}).catch(()=>{$("#nocam").style.display="block";$("#vid").style.display="none"});
 const MODEL="https://teachablemachine.withgoogle.com/models/foa0pjNwP/";let tm;
 $("#go").onclick=async()=>{const v=$("#vid");if(!v.videoWidth)return picker();toast("Identifying…");
-try{tm=tm||await window.tmImage.load(MODEL+"model.json",MODEL+"metadata.json");const p=(await tm.predict(v)).sort((x,y)=>y.probability-x.probability)[0];
-if(p.className!="none"&&p.probability>=.75&&T.find(t=>t.id==p.className))found(p.className);else toast("Not sure. Try a clearer shot, or pick the class.")}
+try{tm=tm||await window.tmImage.load(MODEL+"model.json",MODEL+"metadata.json");const L=(await tm.predict(v)).sort((x,y)=>y.probability-x.probability),p=L[0];
+if(p.className!="none"&&p.probability>=.6&&T.find(t=>t.id==p.className))found(p.className);else toast("Not sure. Best guesses: "+L.slice(0,2).map(x=>x.className+" "+Math.round(x.probability*100)+"%").join(", "))}
 catch(e){toast("Identifier offline. Pick the class instead.");picker()}};
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
 </script></body></html>
