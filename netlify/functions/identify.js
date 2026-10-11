@@ -10,6 +10,6 @@ exports.handler=async(ev)=>{
   const d=await r.json();
   const txt=d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||"";
   let id=null;try{id=JSON.parse(txt.match(/\{[^}]*\}/)[0]).id}catch(e){}
-  return{statusCode:200,body:JSON.stringify({id:IDS.includes(String(id))?String(id):null})};
+  const ok=IDS.includes(String(id));return{statusCode:200,body:JSON.stringify({id:ok?String(id):null,raw:ok?"":(d.error&&d.error.message||txt||"no reply").slice(0,90)})};
  }catch(e){return{statusCode:500,body:"{}"}}
 };
