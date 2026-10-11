@@ -1,0 +1,99 @@
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ScotRail Spotter</title><link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a1b3d"><link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0a1b3d;--blue:#005eb8;--sky:#cfe3f7;--paper:#f2f6fb;--gold:#f2a900;--vio:#6b4bc4;--ok:#1b8a5a}
+*{box-sizing:border-box;margin:0}html,body{height:100%}
+body{font:16px/1.4 Barlow,system-ui,sans-serif;background:var(--ink);color:#fff;overflow:hidden;padding-top:env(safe-area-inset-top)}
+h1,h2,h3,.big{font-family:"Barlow Condensed",Arial Narrow,sans-serif;font-weight:700}
+main{height:calc(100% - 64px - env(safe-area-inset-bottom));overflow:auto}
+.v{display:none;height:100%}.v.on{display:block}
+#scan{position:relative;background:#000}
+video{width:100%;height:100%;object-fit:cover}
+.frame{position:absolute;inset:14% 8% 26%;pointer-events:none}
+.frame i{position:absolute;width:34px;height:34px;border:4px solid #fff}
+.frame i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0}.frame i:nth-child(2){top:0;right:0;border-left:0;border-bottom:0}
+.frame i:nth-child(3){bottom:0;left:0;border-right:0;border-top:0}.frame i:nth-child(4){bottom:0;right:0;border-left:0;border-top:0}
+.hint{position:absolute;top:calc(14% - 40px);width:100%;text-align:center;font-weight:500;text-shadow:0 1px 4px #000}
+#go{position:absolute;bottom:7%;left:50%;transform:translateX(-50%);width:76px;height:76px;border-radius:50%;border:5px solid #fff;background:var(--blue);color:#fff;font:700 15px "Barlow Condensed";cursor:pointer}
+#go:active{background:#fff;color:var(--blue)}
+#man{position:absolute;bottom:9%;right:6%;background:none;border:0;color:#fff;text-decoration:underline;font-size:14px}
+#nocam{display:none;padding:32px 24px;text-align:center}
+.pad{padding:20px 16px}.stat{display:flex;gap:10px;margin:14px 0}
+.stat div{flex:1;background:#12295a;padding:12px;border-radius:6px}.stat b{display:block;font:700 30px "Barlow Condensed"}
+.bar{height:8px;background:#12295a;border-radius:4px;overflow:hidden}.bar i{display:block;height:100%;background:var(--gold)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.tile{background:var(--paper);color:var(--ink);border-radius:6px;padding:12px;min-height:92px;border-left:6px solid var(--blue);cursor:pointer}
+.tile h3{font-size:24px}.tile small{font-weight:500}
+.tile.no{background:#12295a;color:#6f84ad;border-color:#223a74}
+.tile.rare{border-color:var(--vio)}.tile.legendary{border-color:var(--gold)}
+nav{position:fixed;bottom:0;left:0;right:0;height:calc(64px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);display:flex;background:#06112a;border-top:1px solid #223a74}
+nav button{flex:1;background:none;border:0;color:#8fa6cf;font:600 17px "Barlow Condensed"}nav button.on{color:#fff;box-shadow:inset 0 3px var(--gold)}
+#card{position:fixed;inset:0;background:rgba(5,12,30,.7);display:none;align-items:flex-end;z-index:5}
+#card.on{display:flex}
+.sheet{background:var(--paper);color:var(--ink);width:100%;max-height:88%;overflow:auto;border-radius:14px 14px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom));animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+.badge{display:inline-block;padding:2px 10px;border-radius:3px;font-weight:600;color:#fff;background:var(--blue)}
+.badge.rare{background:var(--vio)}.badge.legendary{background:var(--gold);color:#000}
+.sheet h2{font-size:42px;line-height:1}.spec{display:flex;flex-wrap:wrap;gap:6px 18px;margin:10px 0;font-weight:500;color:#34507d}
+.xp{font:700 30px "Barlow Condensed";color:var(--ok);margin:10px 0}
+.sheet button{width:100%;margin-top:12px;padding:13px;border:0;border-radius:6px;background:var(--ink);color:#fff;font:700 18px "Barlow Condensed"}
+.sheet button.alt{background:var(--sky);color:var(--ink)}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.pick button{margin:0;background:var(--blue)}
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#fff;color:var(--ink);padding:10px 16px;border-radius:6px;display:none;z-index:9;font-weight:500}
+@media(prefers-reduced-motion:reduce){.sheet{animation:none}}
+</style></head><body>
+<main>
+<section id="scan" class="v on"><video id="vid" playsinline muted autoplay></video>
+<div class="frame"><i></i><i></i><i></i><i></i></div><div class="hint">Fit a ScotRail train in the frame</div>
+<button id="go">SCAN</button><button id="man">Pick class instead</button>
+<div id="nocam"><h2>Camera blocked</h2><p>Allow camera access in your browser settings, or use “Pick class instead”.</p></div></section>
+<section id="dex" class="v pad"><h1>TrainDex</h1><div class="bar"><i id="dbar"></i></div><p id="dtxt"></p><div class="grid" id="grid"></div></section>
+<section id="me" class="v pad"><h1 id="rank"></h1><div class="stat"><div><b id="lv"></b>Level</div><div><b id="xp"></b>XP</div><div><b id="lg"></b>Legendary</div></div>
+<div class="bar"><i id="lbar"></i></div><p id="ltxt" style="margin:8px 0 22px"></p>
+<button class="sheet" style="all:unset;color:#8fa6cf;text-decoration:underline" id="reset">Reset my collection</button>
+<p style="margin-top:22px;color:#8fa6cf;font-size:13px">Fan-made, not an official ScotRail app. Train details are summaries, so check them before relying on them.</p></section>
+</main>
+<nav><button class="on" data-v="scan">Scan</button><button data-v="dex">TrainDex</button><button data-v="me">Profile</button></nav>
+<div id="card"><div class="sheet" id="sheet"></div></div><div id="toast"></div>
+<script>
+const T=[
+{id:"380",n:"Class 380",m:"Siemens Desiro",y:"2010",t:"Electric unit",s:"100 mph",r:"common",h:"Introduced around 2010 for Ayrshire and Inverclyde routes out of Glasgow Central, replacing older suburban trains."},
+{id:"385",n:"Class 385",m:"Hitachi AT200",y:"2018",t:"Electric unit",s:"100 mph",r:"common",h:"Built for the electrified Edinburgh–Glasgow and central belt routes, and ScotRail's newest electric fleet."},
+{id:"170",n:"Class 170",m:"Bombardier Turbostar",y:"1998–2005",t:"Diesel unit",s:"100 mph",r:"common",h:"Diesel workhorse on longer routes such as Edinburgh–Aberdeen and Inverness lines."},
+{id:"158",n:"Class 158",m:"BREL Express Sprinter",y:"1989–92",t:"Diesel unit",s:"90 mph",r:"common",h:"Long-serving diesel unit built in Derby, used on many regional routes across Scotland."},
+{id:"334",n:"Class 334",m:"Alstom Juniper",y:"1999–2002",t:"Electric unit",s:"90 mph",r:"common",h:"Three-car Juniper units built for Glasgow suburban routes, including the Ayrshire and Inverclyde lines."},
+{id:"320",n:"Class 320",m:"BREL York",y:"1990",t:"Electric unit",s:"75 mph",r:"common",h:"Built for Strathclyde suburban services around Glasgow and carries a long-standing local following."},
+{id:"318",n:"Class 318",m:"BREL York",y:"1985–86",t:"Electric unit",s:"90 mph",r:"rare",h:"Built for the Ayr–Glasgow electrification and now one of the older electric fleets in Scotland."},
+{id:"314",n:"Class 314",m:"BREL Holgate Road",y:"1979",t:"Electric unit",s:"75 mph",r:"rare",h:"Built for the Glasgow suburban network in the late 1970s, and long associated with the Cathcart Circle."},
+{id:"43",n:"Class 43 HST",m:"British Rail",y:"1976 on",t:"Diesel power car",s:"125 mph",r:"rare",h:"The High Speed Train, refurbished for ScotRail's Inter7City services between Scotland's cities."},
+{id:"156",n:"Class 156",m:"Metro-Cammell Super Sprinter",y:"1987–89",t:"Diesel unit",s:"75 mph",r:"legendary",h:"Super Sprinter used on routes such as Glasgow–Kilmarnock and Stranraer lines, now being phased out."},
+{id:"153",n:"Class 153",m:"Leyland / Metro-Cammell conversion",y:"1991–92",t:"Diesel single car",s:"75 mph",r:"legendary",h:"Single-car units converted from two-car Class 155s, a scarce sight on Scotland's network now."}];
+const $=s=>document.querySelector(s),RANK=[[5,"Railway Beginner"],[10,"Train Spotter"],[20,"Railway Enthusiast"],[30,"Experienced Spotter"],[40,"Railway Expert"],[50,"Master Train Spotter"],[75,"Railway Legend"],[99,"Scottish Railway Master"],[100,"Ultimate Railway Collector"]];
+let S;try{S=JSON.parse(localStorage.getItem("sd"))}catch(e){}S=S&&S.f?S:{xp:0,f:{}};
+const save=()=>{try{localStorage.setItem("sd",JSON.stringify(S))}catch(e){}};
+const lvl=()=>Math.floor(S.xp/250)+1,rank=()=>RANK.find(r=>lvl()<=r[0])[1];
+function toast(t){const e=$("#toast");e.textContent=t;e.style.display="block";setTimeout(()=>e.style.display="none",2600)}
+function show(v){document.querySelectorAll(".v").forEach(e=>e.classList.toggle("on",e.id==v));document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.v==v));if(v=="dex")drawDex();if(v=="me")drawMe()}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>show(b.dataset.v));
+function drawDex(){const n=Object.keys(S.f).length;$("#dbar").style.width=n/T.length*100+"%";$("#dtxt").textContent=n+" of "+T.length+" classes found";
+$("#grid").innerHTML=T.map(t=>{const f=S.f[t.id];return f?`<div class="tile ${t.r}" data-id="${t.id}"><h3>${t.n}</h3><small>${t.r} · seen ${f.c}×</small></div>`:`<div class="tile no"><h3>???</h3><small>Not found yet</small></div>`}).join("");
+document.querySelectorAll(".tile[data-id]").forEach(e=>e.onclick=()=>open(T.find(t=>t.id==e.dataset.id),0))}
+function drawMe(){$("#rank").textContent=rank();$("#lv").textContent=lvl();$("#xp").textContent=S.xp;$("#lg").textContent=T.filter(t=>t.r=="legendary"&&S.f[t.id]).length;
+const p=S.xp%250;$("#lbar").style.width=p/2.5+"%";$("#ltxt").textContent=(250-p)+" XP to level "+(lvl()+1)}
+$("#reset").onclick=()=>{if(confirm("Delete your whole collection?")){S={xp:0,f:{}};save();drawMe()}};
+function open(t,gain,isNew){$("#sheet").innerHTML=`<span class="badge ${t.r}">${t.r}</span><h2>${t.n}</h2><div class="spec"><span>${t.m}</span><span>${t.y}</span><span>${t.t}</span><span>${t.s}</span></div><p>${t.h}</p>${gain?`<div class="xp">${isNew?"New train! ":"Seen again. "}+${gain} XP</div>`:""}<button id="ok">Done</button>`;$("#card").classList.add("on");$("#ok").onclick=()=>$("#card").classList.remove("on")}
+function found(id){const t=T.find(x=>x.id==id);const f=S.f[id],isNew=!f;const gain=isNew?(t.r=="legendary"?250:100):10;
+S.f[id]=f?{c:f.c+1,d:f.d}:{c:1,d:new Date().toISOString().slice(0,10)};S.xp+=gain;save();open(t,gain,isNew)}
+function picker(){$("#sheet").innerHTML=`<h2>Which train is it?</h2><div class="pick">${T.map(t=>`<button data-id="${t.id}">${t.n}</button>`).join("")}</div><button class="alt" id="cx">Cancel</button>`;$("#card").classList.add("on");
+document.querySelectorAll(".pick button").forEach(b=>b.onclick=()=>found(b.dataset.id));$("#cx").onclick=()=>$("#card").classList.remove("on")}
+$("#man").onclick=picker;
+navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false}).then(s=>{$("#vid").srcObject=s}).catch(()=>{$("#nocam").style.display="block";$("#vid").style.display="none"});
+$("#go").onclick=async()=>{const v=$("#vid");if(!v.videoWidth)return picker();const c=document.createElement("canvas"),k=800/Math.max(v.videoWidth,v.videoHeight);c.width=v.videoWidth*k;c.height=v.videoHeight*k;c.getContext("2d").drawImage(v,0,0,c.width,c.height);
+toast("Identifying…");try{const r=await fetch("/api/identify",{method:"POST",body:JSON.stringify({image:c.toDataURL("image/jpeg",.8).split(",")[1]})});if(!r.ok)throw 0;const d=await r.json();
+if(d.id&&T.find(t=>t.id==d.id))found(d.id);else toast("No ScotRail train found. Try again, or pick the class.")}catch(e){toast("Identifier offline. Pick the class instead.");picker()}};
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
+</script></body></html>
