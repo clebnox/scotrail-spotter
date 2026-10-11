@@ -12,7 +12,9 @@ const err=(d)=>JSON.stringify(d.errors||d.error||d).slice(0,160);
 const ask=async(image)=>{
   const img=[{type:"text",text:PROMPT},{type:"image_url",image_url:{url:"data:image/jpeg;base64,"+image}}];
   let d=await call(img);
-  if(/agree|licen[cs]e/i.test(err(d))&&!text(d)){await call("agree");d=await call(img)}
+  if(/agree|licen[cs]e/i.test(err(d))&&!text(d)){
+    await fetch("https://api.cloudflare.com/client/v4/accounts/"+process.env.CLOUDFLARE_ACCOUNT_ID+"/ai/run/"+MODEL,{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+process.env.CLOUDFLARE_API_TOKEN},body:JSON.stringify({prompt:"agree"})});
+    d=await call(img)}
   const txt=text(d),m=txt.match(/\{[^}]*"id"[^}]*\}/);
   let o=null;if(m){try{o=JSON.parse(m[0])}catch(e){}}
   return{o,raw:(txt||err(d)).slice(0,160)};
